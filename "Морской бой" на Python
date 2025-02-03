@@ -1,0 +1,154 @@
+import random
+
+# Размер поля
+BOARD_SIZE = 10
+
+# Количество кораблей
+SHIP_SIZES = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
+
+# Символы для отображения
+EMPTY = '~'
+SHIP = 'O'
+HIT = 'X'
+MISS = '.'
+
+class Board:
+    def __init__(self):
+        self.grid = [[EMPTY for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
+        self.ships = []
+
+    def place_ship(self, ship_size):
+        while True:
+            orientation = random.choice(['horizontal', 'vertical'])
+            if orientation == 'horizontal':
+                row = random.randint(0, BOARD_SIZE - 1)
+                col = random.randint(0, BOARD_SIZE - ship_size)
+            else:
+                row = random.randint(0, BOARD_SIZE - ship_size)
+                col = random.randint(0, BOARD_SIZE - 1)
+
+            if self.can_place_ship(row, col, ship_size, orientation):
+                self.ships.append((row, col, ship_size, orientation))
+                for i in range(ship_size):
+                    if orientation == 'horizontal':
+                        self.grid[row][col + i] = SHIP
+                    else:
+                        self.grid[row + i][col] = SHIP
+                break
+
+    def can_place_ship(self, row, col, ship_size, orientation):
+        for i in range(ship_size):
+            if orientation == 'horizontal':
+                if self.grid[row][col + i] != EMPTY:
+                    return False
+            else:
+                if self.grid[row + i][col] != EMPTY:
+                    return False
+        return True
+
+    def display(self, hide_ships=False):
+        print("  " + " ".join([chr(65 + i) for i in range(BOARD_SIZE)]))
+        for i in range(BOARD_SIZE):
+            row_display = []
+            for j in range(BOARD_SIZE):
+                if hide_ships and self.grid[i][j] == SHIP:
+                    row_display.append(EMPTY)
+                else:
+                    row_display.append(self.grid[i][j])
+            print(f"{i+1} " + " ".join(row_display))
+
+    def is_ship_sunk(self, row, col):
+        for ship in self.ships:
+            s_row, s_col, s_size, s_orientation = ship
+            if s_orientation == 'horizontal':
+                if row == s_row and s_col <= col < s_col + s_size:
+                    for i in range(s_size):
+                        if self.grid[s_row][s_col + i] != HIT:
+                            return False
+                    return True
+            else:
+                if col == s_col and s_row <= row < s_row + s_size:
+                    for i in range(s_size):
+                        if self.grid[s_row + i][s_col] != HIT:
+                            return False
+                    return True
+        return False
+
+    def all_ships_sunk(self):
+        for ship in self.ships:
+            s_row, s_col, s_size, s_orientation = ship
+            for i in range(s_size):
+                if s_orientation == 'horizontal':
+                    if self.grid[s_row][s_col + i] != HIT:
+                        return False
+                else:
+                    if self.grid[s_row + i][s_col] != HIT:
+                        return False
+        return True
+
+def get_player_move():
+    while True:
+        try:
+            move = input("Введите координаты выстрела (например, A1): ").upper()
+            col = ord(move[0]) - ord('A')
+            row = int(move[1:]) - 1
+            if 0 <= row < BOARD_SIZE and 0 <= col < BOARD_SIZE:
+                return row, col
+            else:
+                print("Неверные координаты. Попробуйте снова.")
+        except (ValueError, IndexError):
+            print("Неверный формат. Попробуйте снова.")
+
+def main():
+    print("Добро пожаловать в Морской бой!")
+    player_board = Board()
+    computer_board = Board()
+
+    for ship_size in SHIP_SIZES:
+        player_board.place_ship(ship_size)
+        computer_board.place_ship(ship_size)
+
+    while True:
+        print("\nВаше поле:")
+        player_board.display()
+        print("\nПоле компьютера:")
+        computer_board.display(hide_ships=True)
+
+        # Ход игрока
+        print("\nВаш ход:")
+        row, col = get_player_move()
+        if computer_board.grid[row][col] == SHIP:
+            print("Попадание!")
+            computer_board.grid[row][col] = HIT
+            if computer_board.is_ship_sunk(row, col):
+                print("Корабль потоплен!")
+            if computer_board.all_ships_sunk():
+                print("Вы выиграли!")
+                break
+        elif computer_board.grid[row][col] == EMPTY:
+            print("Промах!")
+            computer_board.grid[row][col] = MISS
+        else:
+            print("Вы уже стреляли сюда.")
+
+        # Ход компьютера
+        print("\nХод компьютера:")
+        while True:
+            row = random.randint(0, BOARD_SIZE - 1)
+            col = random.randint(0, BOARD_SIZE - 1)
+            if player_board.grid[row][col] not in [HIT, MISS]:
+                break
+        if player_board.grid[row][col] == SHIP:
+            print(f"Компьютер попал в {chr(65 + col)}{row + 1}!")
+            player_board.grid[row][col] = HIT
+            if player_board.is_ship_sunk(row, col):
+                print("Компьютер потопил ваш корабль!")
+            if player_board.all_ships_sunk():
+                print("Компьютер выиграл!")
+                break
+        else:
+            print(f"Компьютер промахнулся в {chr(65 + col)}{row + 1}.")
+            player_board.grid[row][col] = MISS
+
+if __name__ == "__main__":
+    main()
